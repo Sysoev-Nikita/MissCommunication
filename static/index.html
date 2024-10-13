@@ -9,7 +9,7 @@
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
             color: #333;
-            max-width: 800px;
+            max-width: 900px;
             margin: auto;
             padding: 20px;
             text-align: center;
@@ -18,51 +18,74 @@
             text-align: center;
             color: #444;
         }
-        #phrase-container, #translation-container, #feedback-container {
+        #main-container {
+            display: grid;
+            grid-template-columns: 150px 1fr 150px;
+            grid-template-rows: auto auto;
+            grid-gap: 20px;
+            align-items: center;
+            justify-items: center;
+        }
+        #character-image, #user-image {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #character-image {
+            grid-column: 1;
+            grid-row: 1;
+        }
+        #user-image {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        #phrase-container {
+            grid-column: 2;
+            grid-row: 1;
             background-color: #ffffff;
             padding: 15px;
-            margin-bottom: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            display: inline-block;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 140px;
+        }
+        #user-translation-container {
+            grid-column: 2;
+            grid-row: 2;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             width: 100%;
             box-sizing: border-box;
         }
-        #phrase-container {
-            min-height: 100px; /* Уменьшенная минимальная высота для предотвращения смещения */
-        }
-        button {
-            background-color: #007bff;
-            color: #ffffff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
         textarea {
-            width: calc(100% - 40px); /* Учитываем отступы для равномерного отображения */
+            width: calc(100% - 20px);
             padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
+            border: none;
+            outline: none;
             margin-top: 10px;
             resize: vertical;
-            font-size: 26px; /* Увеличенный шрифт */
-            text-align: center; /* Центрирование текста */
-            font-family: Arial, sans-serif; /* Совмещение с исходной фразой */
+            font-size: 26px;
+            text-align: center;
+            font-family: Arial, sans-serif;
         }
         p#german-phrase {
-            font-size: 28px; /* Увеличенный шрифт для исходной фразы */
-            font-weight: bold;
+            font-size: 26px;
+            font-weight: normal;
             margin-bottom: 10px;
         }
         #correct-translation {
             font-size: 20px;
             color: #666;
             margin-top: 5px;
-            visibility: hidden; /* Изменено на visibility для предотвращения смещения */
+            visibility: hidden;
+        }
+        #feedback-container {
+            margin-top: 20px;
         }
         .correct {
             color: green;
@@ -76,13 +99,17 @@
     </style>
 </head>
 <body>
-    <h1>Учите немецкий с ChatGPT</h1>
-    <div id="phrase-container">
-        <p id="german-phrase"></p>
-        <p id="correct-translation"></p>
-    </div>
-    <div id="translation-container" style="display: none;">
-        <textarea id="user-translation" rows="4" cols="50" placeholder="Введите ваш перевод здесь..."></textarea><br>
+    <div style="height: 70px;"></div>
+    <div id="main-container">
+        <img id="character-image" src="static/images/neutral_positive.webp" alt="Character">
+        <div id="phrase-container">
+            <p id="german-phrase"></p>
+            <p id="correct-translation"></p>
+        </div>
+        <div id="user-translation-container">
+            <textarea id="user-translation" rows="3" cols="50" placeholder="Введите ваш перевод здесь..."></textarea>
+        </div>
+        <img id="user-image" src="static/images/user.webp" alt="User">
     </div>
     <div id="feedback-container" style="display: none;">
         <p id="feedback"></p>
@@ -99,9 +126,9 @@
             const data = await response.json();
             document.getElementById('german-phrase').innerText = data.phrase;
             document.getElementById('correct-translation').style.visibility = 'hidden';
-            document.getElementById('translation-container').style.display = 'block';
             document.getElementById('user-translation').value = ''; // Очищаем поле ввода
             document.getElementById('feedback-container').style.display = 'none';
+            document.getElementById('character-image').src = 'static/images/neutral_positive.webp';
         }
 
         document.getElementById('user-translation').addEventListener('keydown', function(event) {
@@ -155,6 +182,24 @@
             });
 
             document.getElementById('feedback-container').style.display = 'block';
+
+            // Изменение выражения лица персонажа в зависимости от оценки
+            const characterImage = document.getElementById('character-image');
+            switch (data.score) {
+                case 5:
+                    characterImage.src = 'static/images/happy.webp';
+                    break;
+                case 4:
+                    characterImage.src = 'static/images/neutral_positive.webp';
+                    break;
+                case 2:
+                case 3:
+                    characterImage.src = 'static/images/sad.webp';
+                    break;
+                case 1:
+                    characterImage.src = 'static/images/disappointed.webp';
+                    break;
+            }
         }
     </script>
 </body>
