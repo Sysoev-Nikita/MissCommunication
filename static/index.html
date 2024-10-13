@@ -3,7 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Language Learning Prototype</title>
+    <title>Учите немецкий с ChatGPT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #444;
+        }
+        #phrase-container, #translation-container, #feedback-container {
+            background-color: #ffffff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            resize: vertical;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        .partially-correct {
+            color: orange;
+        }
+    </style>
 </head>
 <body>
     <h1>Учите немецкий с ChatGPT</h1>
@@ -13,10 +62,10 @@
     </div>
     <div id="translation-container" style="display: none;">
         <textarea id="user-translation" rows="4" cols="50" placeholder="Введите ваш перевод здесь..."></textarea><br>
-        <button onclick="checkTranslation()">Проверить перевод</button>
     </div>
-    <div id="feedback-container">
+    <div id="feedback-container" style="display: none;">
         <p><strong>Правильный перевод:</strong> <span id="correct-translation"></span></p>
+        <p><strong>Оценка перевода:</strong> <span id="score"></span> / 5</p>
         <p><strong>Обратная связь:</strong> <span id="feedback"></span></p>
     </div>
 
@@ -26,11 +75,20 @@
             const data = await response.json();
             document.getElementById('german-phrase').innerText = data.phrase;
             document.getElementById('translation-container').style.display = 'block';
+            document.getElementById('user-translation').value = ''; // Очищаем поле ввода
         }
+
+        document.getElementById('user-translation').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // предотвращаем добавление новой строки в textarea
+                checkTranslation();
+            }
+        });
 
         async function checkTranslation() {
             const germanPhrase = document.getElementById('german-phrase').innerText;
             const userTranslation = document.getElementById('user-translation').value;
+
             const response = await fetch('/check_translation', {
                 method: 'POST',
                 headers: {
@@ -41,9 +99,32 @@
                     user_translation: userTranslation
                 })
             });
+            
             const data = await response.json();
             document.getElementById('correct-translation').innerText = data.correct_translation;
+            document.getElementById('score').innerText = data.score;
             document.getElementById('feedback').innerText = data.feedback;
+
+            // Отображение анализа слов
+            const germanPhraseElement = document.getElementById('german-phrase');
+            const words = germanPhraseElement.innerText.split(' ');
+
+            germanPhraseElement.innerHTML = ''; // Очистка перед добавлением нового контента
+
+            data.word_feedback.forEach(wordFeedback => {
+                const wordSpan = document.createElement('span');
+                wordSpan.innerText = wordFeedback.word + ' ';
+                if (wordFeedback.correctness === 'correct') {
+                    wordSpan.classList.add('correct');
+                } else if (wordFeedback.correctness === 'incorrect') {
+                    wordSpan.classList.add('incorrect');
+                } else if (wordFeedback.correctness === 'partially_correct') {
+                    wordSpan.classList.add('partially-correct');
+                }
+                germanPhraseElement.appendChild(wordSpan);
+            });
+
+            document.getElementById('feedback-container').style.display = 'block';
         }
     </script>
 </body>

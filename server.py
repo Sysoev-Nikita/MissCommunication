@@ -3,18 +3,26 @@ from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
+from typing import List
 
 # Модели данных для структурированного ответа
 class OriginalPhrase(BaseModel):
     phrase: str
 
+class WordFeedback(BaseModel):
+    word: str
+    correctness: str  # значения: 'correct', 'incorrect', 'partially_correct'
+
 class CorrectionResponse(BaseModel):
     correct_translation: str
     feedback: str
+    score: int  # оценка от 1 до 5
+    word_feedback: List[WordFeedback]
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+client = OpenAI()
+client.api_key = os.getenv('OPENAI_API_KEY')
 
 app = Flask(__name__, static_folder='static')
 
@@ -59,12 +67,16 @@ def check_translation():
     prompt = (
         f"Вот фраза на немецком языке: \"{german_phrase}\". "
         f"Пользовательский перевод: \"{user_translation}\". "
-        f"Предоставь правильный перевод и укажи на ошибки в переводе."
+        f"Предоставь правильный перевод, выставь оценку от 1 до 5, укажи на ошибки в переводе, и дай обратную связь по каждому слову исходной фразы, правильно ли оно переведено. "
+        f"Будь менее придирчив к мелким неточностям, таким как артикли и числительные, и учитывай смысловую схожесть слов. "
+        f"Считай перевод верным, если переданная информация передана верно, даже если структура фразы немного отличается. "
+        f"Слова, в которых есть грамматическая ошибка или заметное смысловое отличие, помечай как 'partially_correct'. "
+        f"Для каждого слова укажи одно из значений: 'correct', 'incorrect', 'partially_correct'."
     )
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык."},
+            {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык. Будь менее строг в оценке точности перевода, делай акцент на смысловой передаче информации."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=400,
@@ -73,7 +85,14 @@ def check_translation():
     parsed_response = response.choices[0].message.parsed
     return jsonify({
         'correct_translation': parsed_response.correct_translation,
-        'feedback': parsed_response.feedback
+        'feedback': parsed_response.feedback,
+        'score': parsed_response.score,
+        'word_feedback': [
+            {
+                'word': word_feedback.word,
+                'correctness': word_feedback.correctness
+            } for word_feedback in parsed_response.word_feedback
+        ]
     })
 
 if __name__ == '__main__':
