@@ -12,6 +12,7 @@
             max-width: 800px;
             margin: auto;
             padding: 20px;
+            text-align: center;
         }
         h1 {
             text-align: center;
@@ -19,10 +20,16 @@
         }
         #phrase-container, #translation-container, #feedback-container {
             background-color: #ffffff;
-            padding: 20px;
+            padding: 15px;
             margin-bottom: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #phrase-container {
+            min-height: 100px; /* Уменьшенная минимальная высота для предотвращения смещения */
         }
         button {
             background-color: #007bff;
@@ -36,12 +43,26 @@
             background-color: #0056b3;
         }
         textarea {
-            width: 100%;
+            width: calc(100% - 40px); /* Учитываем отступы для равномерного отображения */
             padding: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
             margin-top: 10px;
             resize: vertical;
+            font-size: 26px; /* Увеличенный шрифт */
+            text-align: center; /* Центрирование текста */
+            font-family: Arial, sans-serif; /* Совмещение с исходной фразой */
+        }
+        p#german-phrase {
+            font-size: 28px; /* Увеличенный шрифт для исходной фразы */
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #correct-translation {
+            font-size: 20px;
+            color: #666;
+            margin-top: 5px;
+            visibility: hidden; /* Изменено на visibility для предотвращения смещения */
         }
         .correct {
             color: green;
@@ -57,31 +78,40 @@
 <body>
     <h1>Учите немецкий с ChatGPT</h1>
     <div id="phrase-container">
-        <button onclick="generatePhrase()">Получить фразу</button>
         <p id="german-phrase"></p>
+        <p id="correct-translation"></p>
     </div>
     <div id="translation-container" style="display: none;">
         <textarea id="user-translation" rows="4" cols="50" placeholder="Введите ваш перевод здесь..."></textarea><br>
     </div>
     <div id="feedback-container" style="display: none;">
-        <p><strong>Правильный перевод:</strong> <span id="correct-translation"></span></p>
-        <p><strong>Оценка перевода:</strong> <span id="score"></span> / 5</p>
-        <p><strong>Обратная связь:</strong> <span id="feedback"></span></p>
+        <p id="feedback"></p>
     </div>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Генерируем первую фразу при загрузке страницы
+            generatePhrase();
+        });
+
         async function generatePhrase() {
             const response = await fetch('/generate_phrase');
             const data = await response.json();
             document.getElementById('german-phrase').innerText = data.phrase;
+            document.getElementById('correct-translation').style.visibility = 'hidden';
             document.getElementById('translation-container').style.display = 'block';
             document.getElementById('user-translation').value = ''; // Очищаем поле ввода
+            document.getElementById('feedback-container').style.display = 'none';
         }
 
         document.getElementById('user-translation').addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 event.preventDefault(); // предотвращаем добавление новой строки в textarea
-                checkTranslation();
+                if (document.getElementById('feedback-container').style.display === 'block') {
+                    generatePhrase();
+                } else {
+                    checkTranslation();
+                }
             }
         });
 
@@ -102,7 +132,7 @@
             
             const data = await response.json();
             document.getElementById('correct-translation').innerText = data.correct_translation;
-            document.getElementById('score').innerText = data.score;
+            document.getElementById('correct-translation').style.visibility = 'visible';
             document.getElementById('feedback').innerText = data.feedback;
 
             // Отображение анализа слов

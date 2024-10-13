@@ -45,7 +45,7 @@ def generate_phrase():
     dialog_history.append({"role": "user", "content": prompt})
 
     response = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         messages=dialog_history,
         max_tokens=100,
         response_format=OriginalPhrase
@@ -55,7 +55,7 @@ def generate_phrase():
     phrase = response.choices[0].message.parsed
     dialog_history.append({"role": "assistant", "content": phrase.phrase})
 
-    return jsonify({'phrase': phrase.phrase})
+    return jsonify({'phrase': phrase.phrase.rstrip('.')})
 
 # Проверка перевода пользователя
 @app.route('/check_translation', methods=['POST'])
@@ -74,7 +74,7 @@ def check_translation():
         f"Для каждого слова укажи одно из значений: 'correct', 'incorrect', 'partially_correct'."
     )
     response = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык. Будь менее строг в оценке точности перевода, делай акцент на смысловой передаче информации."},
             {"role": "user", "content": prompt}
@@ -84,7 +84,7 @@ def check_translation():
     )
     parsed_response = response.choices[0].message.parsed
     return jsonify({
-        'correct_translation': parsed_response.correct_translation,
+        'correct_translation': parsed_response.correct_translation.rstrip('.'),
         'feedback': parsed_response.feedback,
         'score': parsed_response.score,
         'word_feedback': [
