@@ -14,30 +14,39 @@ class CorrectionResponse(BaseModel):
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
-client = OpenAI()
-client.api_key = os.getenv('OPENAI_API_KEY')
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 app = Flask(__name__, static_folder='static')
+
+# Хранение истории диалога для генерации разнообразных фраз
+dialog_history = [
+    {"role": "system", "content": "Ты создаешь фразы на немецком языке для учебных целей. Фразы должны быть разнообразными и охватывать разные темы."}
+]
 
 # Маршрут для главной страницы (index.html)
 @app.route('/')
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
-# Генерация случайной немецкой фразы
+# Генерация случайной немецкой фразы с использованием контекста
 @app.route('/generate_phrase', methods=['GET'])
 def generate_phrase():
-    prompt = "Generate a simple German phrase for a beginner learning level."
+    prompt = "Сгенерируй новую простую фразу на немецком языке для начального уровня изучения, избегай повторов предыдущих фраз."
+
+    # Добавляем пользовательский запрос в историю диалога
+    dialog_history.append({"role": "user", "content": prompt})
+
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You generate phrases in German for studying purposes."},
-            {"role": "user", "content": prompt}
-        ],
+        messages=dialog_history,
         max_tokens=100,
         response_format=OriginalPhrase
     )
+
+    # Извлекаем и сохраняем сгенерированную фразу в истории
     phrase = response.choices[0].message.parsed
+    dialog_history.append({"role": "assistant", "content": phrase.phrase})
+
     return jsonify({'phrase': phrase.phrase})
 
 # Проверка перевода пользователя
@@ -48,14 +57,14 @@ def check_translation():
     user_translation = data.get('user_translation')
 
     prompt = (
-        f"Here is a German phrase: \"{german_phrase}\". "
-        f"The user's translation is: \"{user_translation}\". "
-        f"Provide the correct translation and highlight mistakes."
+        f"Вот фраза на немецком языке: \"{german_phrase}\". "
+        f"Пользовательский перевод: \"{user_translation}\". "
+        f"Предоставь правильный перевод и укажи на ошибки в переводе."
     )
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=400,
