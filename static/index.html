@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Learning Prototype</title>
+</head>
+<body>
+    <h1>Учите немецкий с ChatGPT</h1>
+    <div id="phrase-container">
+        <button onclick="generatePhrase()">Получить фразу</button>
+        <p id="german-phrase"></p>
+    </div>
+    <div id="translation-container" style="display: none;">
+        <textarea id="user-translation" rows="4" cols="50" placeholder="Введите ваш перевод здесь..."></textarea><br>
+        <button onclick="checkTranslation()">Проверить перевод</button>
+    </div>
+    <div id="feedback-container">
+        <p><strong>Правильный перевод:</strong> <span id="correct-translation"></span></p>
+        <p><strong>Обратная связь:</strong> <span id="feedback"></span></p>
+    </div>
+
+    <script>
+        async function generatePhrase() {
+            const response = await fetch('/generate_phrase');
+            const data = await response.json();
+            document.getElementById('german-phrase').innerText = data.phrase;
+            document.getElementById('translation-container').style.display = 'block';
+        }
+
+        async function checkTranslation() {
+            const germanPhrase = document.getElementById('german-phrase').innerText;
+            const userTranslation = document.getElementById('user-translation').value;
+            const response = await fetch('/check_translation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    german_phrase: germanPhrase,
+                    user_translation: userTranslation
+                })
+            });
+            const data = await response.json();
+            document.getElementById('correct-translation').innerText = data.correct_translation;
+            document.getElementById('feedback').innerText = data.feedback;
+        }
+    </script>
+</body>
+</html>
