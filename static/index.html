@@ -15,6 +15,37 @@
             padding: 20px;
             text-align: center;
         }
+        #controls-container {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Отступ между элементами */
+        }
+        select, input[type="text"] {
+            font-size: 16px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        select {
+            width: auto;
+        }
+        #level, #language {
+            margin-right: 10px; /* Отступ между уровнями */
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            margin-left: 0px;
+        }
+        #processing-container {
+            height: 30px; /* Фиксированная высота для спинера */
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        #processing {
+            display: none;
+            font-size: 16px;
+            color: #888;
+        }
         #main-container {
             display: grid;
             grid-template-columns: 150px 1fr 150px;
@@ -100,7 +131,27 @@
     </style>
 </head>
 <body>
-    <div style="height: 70px;"></div>
+    <div id="controls">
+        <select id="level">
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+        </select>
+        <select id="language">
+            <option value="german">Немецкий</option>
+            <option value="english">Английский</option>
+            <option value="french">Французский</option>
+            <option value="spanish">Испанский</option>
+            <option value="italian">Итальянский</option>
+        </select>
+        <input type="text" id="context" placeholder="Контекст">
+    </div>
+    <div id="processing-container">
+        <div id="processing">Обработка...</div>
+    </div>
     <div id="main-container">
         <img id="character-image" src="static/images/neutral_positive.webp" alt="Character">
         <div id="phrase-container">
@@ -123,8 +174,17 @@
         });
 
         async function generatePhrase() {
-            const response = await fetch('/generate_phrase');
+            const level = document.getElementById("level").value;
+            const language = document.getElementById("language").value;
+            const context = document.getElementById("context").value;
+
+            document.getElementById("processing").style.display = "block";
+
+            const response = await fetch(`/generate_phrase?level=${level}&language=${language}&context=${context}`);
             const data = await response.json();
+
+            document.getElementById("processing").style.display = "none";
+
             document.getElementById('german-phrase').innerText = data.phrase;
             document.getElementById('correct-translation').style.visibility = 'hidden';
             document.getElementById('user-translation').value = ''; // Очищаем поле ввода
@@ -147,6 +207,9 @@
             const germanPhrase = document.getElementById('german-phrase').innerText;
             const userTranslation = document.getElementById('user-translation').value;
 
+            document.getElementById("processing").style.display = "block";
+            document.getElementById("user-translation").disabled = true;
+
             const response = await fetch('/check_translation', {
                 method: 'POST',
                 headers: {
@@ -159,14 +222,15 @@
             });
             
             const data = await response.json();
+
+            document.getElementById("processing").style.display = "none";
+            document.getElementById("user-translation").disabled = false;
+
             document.getElementById('correct-translation').innerText = data.correct_translation;
             document.getElementById('correct-translation').style.visibility = 'visible';
             document.getElementById('feedback').innerHTML = data.feedback;
 
-            // Отображение анализа слов
             const germanPhraseElement = document.getElementById('german-phrase');
-            const words = germanPhraseElement.innerText.split(' ');
-
             germanPhraseElement.innerHTML = ''; // Очистка перед добавлением нового контента
 
             data.word_feedback.forEach(wordFeedback => {
@@ -184,7 +248,6 @@
 
             document.getElementById('feedback-container').style.display = 'block';
 
-            // Изменение выражения лица персонажа в зависимости от оценки
             const characterImage = document.getElementById('character-image');
             switch (data.score) {
                 case 5:
