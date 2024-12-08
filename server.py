@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 from typing import List
+import markdown
 
 # Модели данных для структурированного ответа
 class OriginalPhrase(BaseModel):
@@ -39,13 +40,13 @@ def serve_index():
 # Генерация случайной немецкой фразы с использованием контекста
 @app.route('/generate_phrase', methods=['GET'])
 def generate_phrase():
-    prompt = "Сгенерируй новую простую фразу на немецком языке для начального уровня изучения, избегай повторов предыдущих фраз."
+    prompt = "Сгенерируй новую фразу на немецком языке, избегай повторов предыдущих фраз."
 
     # Добавляем пользовательский запрос в историю диалога
     dialog_history.append({"role": "user", "content": prompt})
 
     response = client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=dialog_history,
         max_tokens=100,
         response_format=OriginalPhrase
@@ -72,6 +73,7 @@ def check_translation():
         f"Считай перевод верным, если переданная информация передана верно, даже если структура фразы немного отличается. "
         f"Слова, в которых есть грамматическая ошибка или заметное смысловое отличие, помечай как 'partially_correct'. "
         f"Для каждого слова укажи одно из значений: 'correct', 'incorrect', 'partially_correct'."
+        f"Фидбек должен быть достаточно кратким, разбирать только ошибки и неточности. Это должна быть не одна длинная фраза, в нем должна быть структура, можно использовать Markdown для красивого форматирования."
     )
     response = client.beta.chat.completions.parse(
         model="gpt-4o",
@@ -83,9 +85,10 @@ def check_translation():
         response_format=CorrectionResponse
     )
     parsed_response = response.choices[0].message.parsed
+    feedback_html = markdown.markdown(parsed_response.feedback)
     return jsonify({
         'correct_translation': parsed_response.correct_translation.rstrip('.'),
-        'feedback': parsed_response.feedback,
+        'feedback': feedback_html,
         'score': parsed_response.score,
         'word_feedback': [
             {

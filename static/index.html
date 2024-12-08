@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Учите немецкий с ChatGPT</title>
+    <title>Miss Communication</title>
+    <link rel="icon" type="image/webp" href="static/images/happy.webp">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,10 +14,6 @@
             margin: auto;
             padding: 20px;
             text-align: center;
-        }
-        h1 {
-            text-align: center;
-            color: #444;
         }
         #main-container {
             display: grid;
@@ -63,15 +60,15 @@
             box-sizing: border-box;
         }
         textarea {
+            font-size: 26px;
+            font-family: Arial, sans-serif;
             width: calc(100% - 20px);
             padding: 10px;
             border: none;
             outline: none;
             margin-top: 10px;
             resize: vertical;
-            font-size: 26px;
             text-align: center;
-            font-family: Arial, sans-serif;
         }
         p#german-phrase {
             font-size: 26px;
@@ -85,7 +82,11 @@
             visibility: hidden;
         }
         #feedback-container {
-            margin-top: 20px;
+            max-width: 100%;
+            width: calc(100% - 300px); /* Учитываем ширину изображений персонажей */
+            margin: 20px auto 0 auto;
+            text-align: left;
+            box-sizing: border-box;
         }
         .correct {
             color: green;
@@ -112,7 +113,7 @@
         <img id="user-image" src="static/images/user.webp" alt="User">
     </div>
     <div id="feedback-container" style="display: none;">
-        <p id="feedback"></p>
+        <div id="feedback"></div>
     </div>
 
     <script>
@@ -160,7 +161,7 @@
             const data = await response.json();
             document.getElementById('correct-translation').innerText = data.correct_translation;
             document.getElementById('correct-translation').style.visibility = 'visible';
-            document.getElementById('feedback').innerText = data.feedback;
+            document.getElementById('feedback').innerHTML = data.feedback;
 
             // Отображение анализа слов
             const germanPhraseElement = document.getElementById('german-phrase');
