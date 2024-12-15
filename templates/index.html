@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miss Communication</title>
+    <link rel="icon" type="image/webp" href="static/images/happy.webp">
+    <!-- Подключение внешнего CSS -->
+    <link rel="stylesheet" href="static/css/styles.css">
+</head>
+<body>
+    <div id="controls">
+        <select id="level">
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+        </select>
+        <select id="language">
+            <option value="german">Немецкий</option>
+            <option value="english">Английский</option>
+            <option value="french">Французский</option>
+            <option value="spanish">Испанский</option>
+            <option value="italian">Итальянский</option>
+        </select>
+        <input type="text" id="context" placeholder="Контекст">
+    </div>
+    <div id="processing-container">
+        <div id="processing">Обработка...</div>
+    </div>
+    <div id="main-container">
+        <img id="character-image" src="static/images/neutral_positive.webp" alt="Character">
+        <div id="phrase-container">
+            <p id="german-phrase"></p>
+            <p id="correct-translation"></p>
+        </div>
+        <div id="user-translation-container">
+            <textarea id="user-translation" rows="3" cols="50" placeholder="Введите ваш перевод здесь..."></textarea>
+        </div>
+        <img id="user-image" src="static/images/user.webp" alt="User">
+    </div>
+    <div id="feedback-container" style="display: none;">
+        <div id="feedback"></div>
+    </div>
+
+    <!-- Подключение внешнего JavaScript -->
+    <script src="static/js/scripts.js"></script>
+</body>
+</html>

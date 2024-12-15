@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -35,7 +35,7 @@ dialog_history = [
 # Маршрут для главной страницы (index.html)
 @app.route('/')
 def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
+    return render_template('index.html')
 
 @app.route('/generate_phrase', methods=['GET'])
 def generate_phrase():

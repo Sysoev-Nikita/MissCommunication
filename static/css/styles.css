@@ -1,0 +1,122 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+    text-align: center;
+}
+#controls-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Отступ между элементами */
+}
+select, input[type="text"] {
+    font-size: 16px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+select {
+    width: auto;
+}
+#level, #language {
+    margin-right: 10px; /* Отступ между уровнями */
+}
+input[type="text"] {
+    flex-grow: 1;
+    margin-left: 0px;
+}
+#processing-container {
+    height: 30px; /* Фиксированная высота для спинера */
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+#processing {
+    display: none;
+    font-size: 16px;
+    color: #888;
+}
+#main-container {
+    display: grid;
+    grid-template-columns: 150px 1fr 150px;
+    grid-template-rows: auto auto;
+    grid-gap: 20px;
+    align-items: center;
+    justify-items: center;
+}
+#character-image, #user-image {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+#character-image {
+    grid-column: 1;
+    grid-row: 1;
+}
+#user-image {
+    grid-column: 3;
+    grid-row: 2;
+}
+#phrase-container {
+    grid-column: 2;
+    grid-row: 1;
+    background-color: #ffffff;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 140px;
+}
+#user-translation-container {
+    grid-column: 2;
+    grid-row: 2;
+    background-color: #ffffff;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+}
+textarea {
+    font-size: 26px;
+    font-family: Arial, sans-serif;
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: none;
+    outline: none;
+    margin-top: 10px;
+    resize: vertical;
+    text-align: center;
+}
+p#german-phrase {
+    font-size: 26px;
+    font-weight: normal;
+    margin-bottom: 10px;
+}
+#correct-translation {
+    font-size: 20px;
+    color: #666;
+    margin-top: 5px;
+    visibility: hidden;
+}
+#feedback-container {
+    max-width: 100%;
+    width: calc(100% - 300px); /* Учитываем ширину изображений персонажей */
+    margin: 20px auto 0 auto;
+    text-align: left;
+    box-sizing: border-box;
+}
+.correct {
+    color: green;
+}
+.incorrect {
+    color: red;
+}
+.partially-correct {
+    color: orange;
+}
