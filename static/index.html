@@ -226,6 +226,9 @@
             document.getElementById("processing").style.display = "none";
             document.getElementById("user-translation").disabled = false;
 
+            // Устанавливаем фокус обратно в поле ввода
+            document.getElementById("user-translation").focus();
+
             document.getElementById('correct-translation').innerText = data.correct_translation;
             document.getElementById('correct-translation').style.visibility = 'visible';
             document.getElementById('feedback').innerHTML = data.feedback;
@@ -265,6 +268,7 @@
                     break;
             }
         }
+
     </script>
 </body>
 </html>
