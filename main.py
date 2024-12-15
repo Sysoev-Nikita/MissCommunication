@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 from typing import List
 import markdown
+import uuid
 
 # Модели данных для структурированного ответа
 class OriginalPhrase(BaseModel):
@@ -20,45 +21,73 @@ class CorrectionResponse(BaseModel):
     score: int  # оценка от 1 до 5
     word_feedback: List[WordFeedback]
 
-# Загружаем переменные окружения из .env файла
+# Загрузка переменных окружения
 load_dotenv()
 client = OpenAI()
 client.api_key = os.getenv('OPENAI_API_KEY')
 
 app = Flask(__name__, static_folder='static')
+app.secret_key = os.urandom(24)  # Ключ для сессий
 
-# Хранение истории диалога для генерации разнообразных фраз
-dialog_history = [
-    {"role": "system", "content": "Ты создаешь фразы для учебных целей. Фразы должны быть разнообразными, охватывать разные темы и соответствовать уровню пользователя."}
-]
+# Базовое сообщение с инструкцией
+BASE_INSTRUCTION = {
+    "role": "system",
+    "content": "Ты создаешь фразы для учебных целей. Фразы должны быть разнообразными, охватывать разные темы и соответствовать уровню пользователя."
+}
+
+# Хранилище истории для пользователей
+user_histories = {}
+
+# Максимальная длина истории
+MAX_HISTORY_LENGTH = 100
+
+# Получение или создание истории для пользователя
+def get_user_history():
+    user_id = session.get('user_id')
+    if not user_id:
+        user_id = str(uuid.uuid4())  # Генерация нового уникального ID
+        session['user_id'] = user_id
+    if user_id not in user_histories:
+        user_histories[user_id] = [BASE_INSTRUCTION]  # Инициализация истории
+    return user_histories[user_id]
+
+# Добавление сообщения в историю
+def add_to_user_history(history, role, content):
+    history.append({"role": role, "content": content})
+    # Удаление старых сообщений, кроме инструкции
+    while len(history) > MAX_HISTORY_LENGTH + 1:  # +1 для сохранения инструкции
+        history.pop(1)
 
 # Маршрут для главной страницы (index.html)
 @app.route('/')
 def serve_index():
     return render_template('index.html')
 
+# Генерация фразы
 @app.route('/generate_phrase', methods=['GET'])
 def generate_phrase():
     level = request.args.get('level', 'A1')  # По умолчанию A1
     language = request.args.get('language', 'german')  # По умолчанию German
     context = request.args.get('context', '').strip()
 
-    # Создаем подсказку для модели
+    history = get_user_history()
+
+    # Создаём подсказку для модели
     prompt = f"Сгенерируй простую фразу на языке {language} для уровня {level}."
     if context:
         prompt += f" Контекст: {context}."
 
-    dialog_history.append({"role": "user", "content": prompt})
+    add_to_user_history(history, "user", prompt)
 
     response = client.beta.chat.completions.parse(
-        model="gpt-4o",
-        messages=dialog_history,
+        model="gpt-4o-mini",
+        messages=history,
         max_tokens=100,
         response_format=OriginalPhrase
     )
 
     phrase = response.choices[0].message.parsed
-    dialog_history.append({"role": "assistant", "content": phrase.phrase})
+    add_to_user_history(history, "assistant", phrase.phrase)
 
     return jsonify({'phrase': phrase.phrase.rstrip('.')})
 
@@ -69,6 +98,10 @@ def check_translation():
     german_phrase = data.get('german_phrase')
     user_translation = data.get('user_translation')
 
+    if not german_phrase or not user_translation:
+        return jsonify({'error': 'Invalid input data'}), 400
+
+    # Формируем запрос для проверки перевода
     prompt = (
         f"Вот оригинальная фраза: \"{german_phrase}\". "
         f"Пользовательский перевод: \"{user_translation}\". "
@@ -92,6 +125,7 @@ def check_translation():
     )
 
     parsed_response = response.choices[0].message.parsed
+
     feedback_html = markdown.markdown(parsed_response.feedback)
 
     return jsonify({
