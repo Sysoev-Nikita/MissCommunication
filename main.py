@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session  
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 from typing import List
 import markdown
+from markupsafe import Markup
 import uuid
 
 # Модели данных для структурированного ответа
@@ -17,7 +18,6 @@ class WordFeedback(BaseModel):
 
 class CorrectionResponse(BaseModel):
     correct_translation: str
-    feedback: str
     score: int  # оценка от 1 до 5
     word_feedback: List[WordFeedback]
 
@@ -50,6 +50,12 @@ def get_user_history():
     if user_id not in user_histories:
         user_histories[user_id] = [BASE_INSTRUCTION]  # Инициализация истории
     return user_histories[user_id]
+
+# Чтение промпта из файла
+def load_prompt(filename, **kwargs):
+    with open(filename, 'r', encoding='utf-8') as file:
+        prompt = file.read()
+    return prompt.format(**kwargs)
 
 # Добавление сообщения в историю
 def add_to_user_history(history, role, content):
@@ -101,42 +107,48 @@ def check_translation():
     if not german_phrase or not user_translation:
         return jsonify({'error': 'Invalid input data'}), 400
 
-    # Формируем запрос для проверки перевода
-    prompt = (
-        f"Вот оригинальная фраза: \"{german_phrase}\". "
-        f"Пользовательский перевод: \"{user_translation}\". "
-        f"Предоставь правильный перевод, выставь оценку от 1 до 5, укажи на ошибки в переводе, и дай обратную связь по каждому слову исходной фразы, правильно ли оно переведено. "
-        f"Для каждого слова укажи одно из значений: 'correct', 'incorrect', 'partially_correct'."
-        f"Слова, смысл которых был передан в пользовательском переводе верно, помечай как 'correct'. "
-        f"Слова, в которых есть грамматическая ошибка или заметное смысловое отличие, помечай как 'partially_correct'. "
-        f"Слова, смысл которых не передан в пользовательском переводе, помечай как 'incorrect'. "
-        f"Будь менее придирчив к мелким неточностям, таким как артикли и числительные, и учитывай смысловую схожесть слов. "
-        f"Фидбек должен быть структурированным, конкретным и полезным и использовать Markdown для удобного форматирования."
-    )
+    # Загрузка промпта
+    prompt_check = load_prompt('prompts/check_translation.txt', 
+                               german_phrase=german_phrase, user_translation=user_translation)
 
-    response = client.beta.chat.completions.parse(
+    response_check = client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык. Будь менее строг в оценке точности перевода, делай акцент на смысловой передаче информации."},
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык."},
+            {"role": "user", "content": prompt_check}
         ],
         max_tokens=1000,
         response_format=CorrectionResponse
     )
 
-    parsed_response = response.choices[0].message.parsed
+    parsed_response_check = response_check.choices[0].message.parsed
 
-    feedback_html = markdown.markdown(parsed_response.feedback)
+    prompt_feedback = load_prompt('prompts/feedback.txt')
+
+    response_feedback = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Ты — полезный ассистент, помогающий изучать язык."},
+            {"role": "user", "content": prompt_check},
+            {"role": "assistant", "content": parsed_response_check.model_dump_json()},
+            {"role": "user", "content": prompt_feedback}
+        ],
+        max_tokens=1000
+    )
+    feedback_markdown = response_feedback.choices[0].message.content
+
+    # Рендеринг Markdown с поддержкой таблиц
+    feedback_html = markdown.markdown(feedback_markdown, extensions=['tables'])
 
     return jsonify({
-        'correct_translation': parsed_response.correct_translation.rstrip('.'),
-        'feedback': feedback_html,
-        'score': parsed_response.score,
+        'correct_translation': parsed_response_check.correct_translation.rstrip('.'),
+        'feedback': Markup(feedback_html),  # Для безопасного отображения HTML
+        'score': parsed_response_check.score,
         'word_feedback': [
             {
                 'word': word_feedback.word,
                 'correctness': word_feedback.correctness
-            } for word_feedback in parsed_response.word_feedback
+            } for word_feedback in parsed_response_check.word_feedback
         ]
     })
 
