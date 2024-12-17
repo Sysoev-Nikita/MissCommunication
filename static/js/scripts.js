@@ -1,6 +1,44 @@
+let nextPhrase = null;  // Буфер для хранения предзагруженной фразы
+
 document.addEventListener("DOMContentLoaded", function() {
-    generatePhrase();
+    preloadNextPhrase();  // Предзагружаем первую фразу
+    displayPhrase();      // Отображаем фразу из буфера
 });
+
+// Предзагрузка следующей фразы
+async function preloadNextPhrase() {
+    const level = document.getElementById("level").value;
+    const language = document.getElementById("language").value;
+    const context = document.getElementById("context").value;
+
+    try {
+        const response = await fetch(`/generate_phrase?level=${level}&language=${language}&context=${context}`);
+        const data = await response.json();
+        nextPhrase = data.phrase;  // Сохраняем фразу в буфере
+    } catch (error) {
+        console.error("Ошибка при предзагрузке фразы:", error);
+        nextPhrase = null;
+    }
+}
+
+// Отображение новой фразы
+function displayPhrase() {
+    const phraseContainer = document.getElementById('german-phrase');
+
+    if (nextPhrase) {
+        phraseContainer.innerText = nextPhrase;  // Берём из буфера
+        nextPhrase = null;                       // Очищаем буфер
+        preloadNextPhrase();                     // Загружаем следующую фразу
+    } else {
+        generatePhrase();  // Если буфер пуст, отправляем запрос на сервер
+    }
+
+    // Сбрасываем интерфейс
+    document.getElementById('correct-translation').style.visibility = 'hidden';
+    document.getElementById('user-translation').value = '';
+    document.getElementById('feedback-container').style.display = 'none';
+    document.getElementById('character-image').src = 'static/images/neutral_positive.webp';
+}
 
 async function generatePhrase() {
     const level = document.getElementById("level").value;
@@ -13,14 +51,9 @@ async function generatePhrase() {
     const data = await response.json();
 
     document.getElementById("processing").style.display = "none";
-
     document.getElementById('german-phrase').innerText = data.phrase;
-    document.getElementById('correct-translation').style.visibility = 'hidden';
-    document.getElementById('user-translation').value = '';
-    document.getElementById('feedback-container').style.display = 'none';
-    document.getElementById('character-image').src = 'static/images/neutral_positive.webp';
+    preloadNextPhrase();  // Сразу предзагружаем следующую фразу
 }
-
 
 async function checkTranslation() {
     const germanPhrase = document.getElementById('german-phrase').innerText;
@@ -86,26 +119,27 @@ async function checkTranslation() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    // Генерация первой фразы при загрузке страницы
-    generatePhrase();
+// Обработка нажатия Enter на уровне всего документа
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const userTranslationField = document.getElementById('user-translation');
 
-    // Обработка нажатия Enter на уровне всего документа
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault(); // Предотвращаем стандартное поведение Enter
-            const userTranslationField = document.getElementById('user-translation');
-
-            // Если уже есть фидбек или поле заблокировано, генерируем новую фразу
-            if (document.getElementById('feedback-container').style.display === 'block' || userTranslationField.disabled) {
-                generatePhrase();
-            } 
-            // Если фидбек ещё не отображён, проверяем перевод
-            else if (userTranslationField.value.trim() !== '') {
-                checkTranslation();
-            }
+        // Если уже есть фидбек или поле заблокировано, показываем новую фразу
+        if (document.getElementById('feedback-container').style.display === 'block' || userTranslationField.disabled) {
+            displayPhrase();
+        } 
+        // Проверка перевода, если фидбек ещё не отображён
+        else if (userTranslationField.value.trim() !== '') {
+            checkTranslation();
         }
-    });
+    }
 });
 
-
+// Сброс буфера при изменении параметров уровня, языка или контекста
+['level', 'language', 'context'].forEach(id => {
+    document.getElementById(id).addEventListener('change', function() {
+        nextPhrase = null;  // Очищаем буфер
+        preloadNextPhrase();  // Предзагружаем новую фразу с учётом изменений
+    });
+});
