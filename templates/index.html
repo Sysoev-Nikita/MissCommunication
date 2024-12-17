@@ -10,6 +10,13 @@
 </head>
 <body>
     <div id="controls">
+        <select id="language">
+            <option value="german">Немецкий</option>
+            <option value="english">Английский</option>
+            <option value="french">Французский</option>
+            <option value="spanish">Испанский</option>
+            <option value="italian">Итальянский</option>
+        </select>
         <select id="level">
             <option value="A1">A1</option>
             <option value="A2">A2</option>
@@ -18,18 +25,14 @@
             <option value="C1">C1</option>
             <option value="C2">C2</option>
         </select>
-        <select id="language">
-            <option value="german">Немецкий</option>
-            <option value="english">Английский</option>
-            <option value="french">Французский</option>
-            <option value="spanish">Испанский</option>
-            <option value="italian">Итальянский</option>
-        </select>
         <input type="text" id="context" placeholder="Контекст">
     </div>
     <div id="processing-container">
-        <div id="processing">Обработка...</div>
+        <div id="processing">
+            <img src="static/images/spinner.gif" alt="Loading..." style="width: 40px; height: 40px;">
+        </div>
     </div>
+    
     <div id="main-container">
         <img id="character-image" src="static/images/neutral_positive.webp" alt="Character">
         <div id="phrase-container">
