@@ -26,7 +26,7 @@ select, input[type="text"] {
     border-radius: 25px;
     background-color: #fdfdfd;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    text-align: center; /* Центрируем текст внутри */
+    text-align: center;
     transition: all 0.3s ease;
 }
 
@@ -47,16 +47,17 @@ select {
     margin-bottom: 10px;
 }
 
-/* Сетка основного контейнера */
+/* Основной контейнер с сеткой */
 #main-container {
     display: grid;
-    grid-template-columns: 120px 1fr 120px; /* Больше места для центрального контейнера */
+    grid-template-columns: 120px 1fr 120px;
     grid-template-rows: auto auto;
     grid-gap: 20px;
     align-items: center;
     justify-items: center;
 }
 
+/* Изображения персонажей */
 #character-image, #user-image {
     width: 130px;
     height: 130px;
@@ -78,62 +79,74 @@ select {
 }
 
 /* Контейнеры с текстом */
-#phrase-container, 
+#phrase-container,
 #user-translation-container {
     grid-column: 2;
     background-color: #ffffff;
     border-radius: 100px; /* Максимально скругленные углы */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     width: 100%;
-    padding: 20px; /* Внутренние отступы */
+    padding: 20px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Центрируем по вертикали */
+    align-items: center;
+    transition: min-height 0.3s ease; /* Плавное изменение высоты */
 }
 
+/* Контейнер для фразы */
 #phrase-container {
-    grid-column: 2;
     grid-row: 1;
-    background-color: #ffffff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    min-height: 140px; /* Минимальная высота */
-    padding: 20px; /* Внутренние отступы */
-    box-sizing: border-box;
-    display: flex; /* Flexbox для центрирования текста */
+    min-height: 140px;
+    padding: 20px 30px; /* Увеличиваем боковые отступы */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Центрируем по вертикали */
+    align-items: center;
+    transition: min-height 0.3s ease; /* Плавное изменение высоты */
+}
+
+/* Текст исходной фразы */
+#phrase-container p#german-phrase {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0;
+    text-align: center;
+    line-height: 1.4;
+    word-break: break-word;
+    flex-shrink: 0; /* Не сжимаем текст */
+    max-width: 90%; /* Уменьшаем ширину текста относительно контейнера */
+}
+
+/* Текст правильного перевода */
+#correct-translation {
+    font-size: 20px;
+    color: #666;
+    margin-top: 10px; /* Отступ сверху */
+    visibility: hidden; /* Скрыт до проверки */
+}
+
+/* Поле ввода пользователя */
+#user-translation-container {
+    grid-row: 2;
+    min-height: 140px;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
 
-
-#user-translation-container {
-    grid-row: 2;
-    height: 140px;
-    display: flex;
-    align-items: center; /* Центрирование по вертикали */
-    justify-content: center; /* Центрирование по горизонтали */
-}
-
-/* Исходная фраза */
-#phrase-container p#german-phrase {
-    font-size: 26px;
-    font-weight: 600; /* Чуть менее жирный */
-    margin: 0; /* Убираем внешние отступы */
-}
-
-/* Поле для ввода */
 textarea {
     font-size: 26px;
     font-family: 'Inter', Arial, sans-serif;
     text-align: center;
     line-height: 1.2;
-    width: calc(100% - 40px); /* Уменьшаем ширину с учётом padding */
-    height: calc(100% - 40px); /* Уменьшаем высоту с учётом padding */
+    width: calc(100% - 40px);
+    height: 100%;
     border: none;
     outline: none;
     resize: none;
     background-color: transparent;
-    box-shadow: none;
-    margin: 0; /* Убираем внешние отступы */
-    display: block;
     box-sizing: border-box;
 }
 
@@ -141,14 +154,7 @@ textarea::placeholder {
     color: #aaa;
 }
 
-/* Обратная связь */
-#correct-translation {
-    font-size: 20px;
-    color: #666;
-    margin-top: 5px;
-    visibility: hidden;
-}
-
+/* Блок обратной связи */
 #feedback-container {
     max-width: 100%;
     width: calc(100% - 300px);

@@ -1,6 +1,6 @@
 let nextPhrase = null;  // Буфер для хранения предзагруженной фразы
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     preloadNextPhrase();  // Предзагружаем первую фразу
     displayPhrase();      // Отображаем фразу из буфера
 });
@@ -21,26 +21,43 @@ async function preloadNextPhrase() {
     }
 }
 
-// Отображение новой фразы
 function displayPhrase() {
-    const phraseContainer = document.getElementById('german-phrase');
+    resetPhraseContainer();  // Сброс стилей и центрирование контейнера
 
     if (nextPhrase) {
-        phraseContainer.innerText = nextPhrase;  // Берём из буфера
-        nextPhrase = null;                       // Очищаем буфер
-        preloadNextPhrase();                     // Загружаем следующую фразу
+        document.getElementById('german-phrase').innerText = nextPhrase;
+        nextPhrase = null;
+        preloadNextPhrase();
     } else {
-        generatePhrase();  // Если буфер пуст, отправляем запрос на сервер
+        generatePhrase();
     }
 
-    // Сбрасываем интерфейс
-    document.getElementById('correct-translation').style.visibility = 'hidden';
     document.getElementById('user-translation').value = '';
     document.getElementById('feedback-container').style.display = 'none';
     document.getElementById('character-image').src = 'static/images/neutral_positive.webp';
 }
 
+function resetPhraseContainer() {
+    const phraseContainer = document.getElementById('phrase-container');
+    const germanPhrase = document.getElementById('german-phrase');
+    const correctTranslation = document.getElementById('correct-translation');
+
+    // Сбрасываем содержимое и стили контейнера
+    germanPhrase.innerHTML = '';
+    correctTranslation.innerHTML = '';
+    correctTranslation.style.visibility = 'hidden';
+
+    // Сбрасываем флекс-центрирование
+    phraseContainer.style.display = 'flex';
+    phraseContainer.style.alignItems = 'center';
+    phraseContainer.style.justifyContent = 'center';
+    phraseContainer.style.height = '';            // Сбрасываем возможную увеличенную высоту
+    phraseContainer.style.minHeight = '140px';    // Возвращаем минимальную высоту
+}
+
 async function generatePhrase() {
+    resetPhraseContainer();  // Сбрасываем контейнер
+
     const level = document.getElementById("level").value;
     const language = document.getElementById("language").value;
     const context = document.getElementById("context").value;
@@ -52,8 +69,10 @@ async function generatePhrase() {
 
     document.getElementById("processing").style.display = "none";
     document.getElementById('german-phrase').innerText = data.phrase;
-    preloadNextPhrase();  // Сразу предзагружаем следующую фразу
+
+    preloadNextPhrase();
 }
+
 
 async function checkTranslation() {
     const germanPhrase = document.getElementById('german-phrase').innerText;
@@ -120,7 +139,7 @@ async function checkTranslation() {
 }
 
 // Обработка нажатия Enter на уровне всего документа
-document.addEventListener('keydown', function(event) {
+document.addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
         event.preventDefault();
         const userTranslationField = document.getElementById('user-translation');
@@ -138,7 +157,7 @@ document.addEventListener('keydown', function(event) {
 
 // Сброс буфера при изменении параметров уровня, языка или контекста
 ['level', 'language', 'context'].forEach(id => {
-    document.getElementById(id).addEventListener('change', function() {
+    document.getElementById(id).addEventListener('change', function () {
         nextPhrase = null;  // Очищаем буфер
         preloadNextPhrase();  // Предзагружаем новую фразу с учётом изменений
     });
