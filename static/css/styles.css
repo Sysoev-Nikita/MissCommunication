@@ -15,8 +15,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin: 0; /* Полностью убираем отступ сверху */
+    padding: 0;
 }
 
 select, input[type="text"] {
@@ -30,6 +31,20 @@ select, input[type="text"] {
     transition: all 0.3s ease;
 }
 
+/* Разная ширина select */
+#language {
+    width: auto; /* Язык */
+}
+
+#level {
+    width: auto; /* Уровень */
+}
+
+#context {
+    flex: 1; /* Растягиваем контекст на всю оставшуюся ширину */
+    min-width: 200px;
+}
+
 select:focus, input[type="text"]:focus {
     border-color: #5c8df6;
     outline: none;
@@ -37,7 +52,7 @@ select:focus, input[type="text"]:focus {
 }
 
 select {
-    appearance: none; /* Убираем стандартный стиль */
+    appearance: none;
     cursor: pointer;
 }
 
@@ -47,7 +62,7 @@ select {
     margin-bottom: 10px;
 }
 
-/* Основной контейнер с сеткой */
+/* Основной контейнер */
 #main-container {
     display: grid;
     grid-template-columns: 120px 1fr 120px;
@@ -57,7 +72,7 @@ select {
     justify-items: center;
 }
 
-/* Изображения персонажей */
+/* Изображения */
 #character-image, #user-image {
     width: 130px;
     height: 130px;
@@ -70,44 +85,37 @@ select {
     grid-column: 1;
     grid-row: 1;
     align-self: center;
+    margin-top: 10px; /* Вернём отступ между картинкой и контейнером */
 }
 
 #user-image {
     grid-column: 3;
     grid-row: 2;
     align-self: center;
+    margin-bottom: 10px; /* Вернём отступ снизу */
 }
 
 /* Контейнеры с текстом */
-#phrase-container,
-#user-translation-container {
+#phrase-container, #user-translation-container {
     grid-column: 2;
     background-color: #ffffff;
-    border-radius: 100px; /* Максимально скругленные углы */
+    border-radius: 100px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     width: 100%;
-    padding: 20px;
+    padding: 20px 30px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Центрируем по вертикали */
+    justify-content: center;
     align-items: center;
-    transition: min-height 0.3s ease; /* Плавное изменение высоты */
+    transition: min-height 0.3s ease;
 }
 
-/* Контейнер для фразы */
 #phrase-container {
     grid-row: 1;
     min-height: 140px;
-    padding: 20px 30px; /* Увеличиваем боковые отступы */
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* Центрируем по вертикали */
-    align-items: center;
-    transition: min-height 0.3s ease; /* Плавное изменение высоты */
 }
 
-/* Текст исходной фразы */
 #phrase-container p#german-phrase {
     font-size: 26px;
     font-weight: 600;
@@ -115,25 +123,21 @@ select {
     text-align: center;
     line-height: 1.4;
     word-break: break-word;
-    flex-shrink: 0; /* Не сжимаем текст */
-    max-width: 90%; /* Уменьшаем ширину текста относительно контейнера */
+    flex-shrink: 0;
+    max-width: 90%;
 }
 
-/* Текст правильного перевода */
 #correct-translation {
     font-size: 20px;
     color: #666;
-    margin-top: 10px; /* Отступ сверху */
-    visibility: hidden; /* Скрыт до проверки */
+    margin-top: 10px;
+    visibility: hidden;
 }
 
 /* Поле ввода пользователя */
 #user-translation-container {
     grid-row: 2;
     min-height: 140px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 textarea {
@@ -163,31 +167,89 @@ textarea::placeholder {
     box-sizing: border-box;
 }
 
-/* Цвета для выделения слов */
 .correct {
     color: green;
 }
+
 .incorrect {
     color: red;
 }
+
 .partially-correct {
     color: orange;
 }
 
-/* Стили для таблиц */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-}
+@media screen and (max-width: 768px) {
+    /* Основной контейнер */
+    #main-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        grid-gap: 15px;
+    }
 
-table th, table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: left;
-}
+    /* Контейнер выбора */
+    #controls-container {
+        display: flex;
+        flex-wrap: nowrap; /* Элементы в одну строку */
+        justify-content: center; /* Центрируем элементы */
+        gap: 5px;
+        margin: 0; /* Полностью убираем отступ сверху */
+    }
 
-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
+    select, input[type="text"] {
+        font-size: 14px;
+        padding: 6px 8px;
+        border-radius: 20px;
+        flex: 1 1 auto;
+        min-width: 60px;
+    }
+
+    #context {
+        flex: 2;
+        margin: 0;
+    }
+
+    /* Изображение девушки */
+    #character-image {
+        grid-row: 1;
+        grid-column: 1;
+        justify-self: start;
+        width: 70px;
+        height: 70px;
+        margin-top: -10px; /* Убираем отступ */
+    }
+
+    /* Контейнеры на всю ширину */
+    #phrase-container, #user-translation-container {
+        grid-column: 1;
+        grid-row: auto;
+        width: 100%;
+        border-radius: 50px;
+        padding: 15px;
+    }
+
+    /* Текст меньше */
+    #phrase-container p#german-phrase,
+    #correct-translation,
+    textarea {
+        font-size: 18px;
+    }
+
+    /* Изображение пользователя */
+    #user-image {
+        grid-row: 4;
+        grid-column: 1;
+        justify-self: end;
+        width: 70px;
+        height: 70px;
+    }
+
+    /* Блок обратной связи */
+    #feedback-container {
+        width: 100%;
+        margin: 15px auto;
+        padding: 15px;
+        text-align: left;
+        border-radius: 50px;
+    }
 }
