@@ -1,7 +1,9 @@
 const appConfig = window.APP_CONFIG || {};
 
 const state = {
+    currentPhrase: null,
     nextPhrase: null,
+    studySuggestions: [],
 };
 
 const elements = {
@@ -16,6 +18,8 @@ const elements = {
     userTranslation: document.getElementById("user-translation"),
     feedbackContainer: document.getElementById("feedback-container"),
     feedback: document.getElementById("feedback"),
+    studySuggestions: document.getElementById("study-suggestions"),
+    studySuggestionsList: document.getElementById("study-suggestions-list"),
     phraseLoader: document.getElementById("phrase-loader"),
     answerLoader: document.getElementById("answer-loader"),
 };
@@ -26,6 +30,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     hideSpinner();
     elements.userTranslation.addEventListener("input", autoResizeTextarea);
     elements.userTranslation.addEventListener("keydown", handleTextareaKeydown);
+    elements.studySuggestionsList.addEventListener("click", handleStudySuggestionClick);
+    elements.studySuggestionsList.addEventListener("mousedown", handleStudySuggestionMouseDown);
+    document.addEventListener("keydown", handleDocumentKeydown);
 
     ["level", "language", "context"].forEach((id) => {
         document.getElementById(id).addEventListener("change", handleControlsChange);
@@ -83,11 +90,50 @@ function resetAnswerArea() {
     elements.userTranslation.disabled = false;
     elements.feedbackContainer.hidden = true;
     elements.feedback.innerHTML = "";
+    dismissStudySuggestions();
     autoResizeTextarea();
 }
 
 function setCharacterMood(mood) {
     elements.characterImage.src = characterImages[mood] || characterImages.idle;
+}
+
+function showStudySuggestions(studySuggestions) {
+    state.studySuggestions = studySuggestions.slice();
+    elements.studySuggestionsList.innerHTML = "";
+
+    studySuggestions.forEach((studySuggestion, index) => {
+        const card = document.createElement("div");
+        card.className = "study-card";
+
+        const label = document.createElement("div");
+        label.className = "study-card-label";
+        label.textContent = studySuggestion.label || "";
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = studySuggestion.action === "remove" ? "study-card-action remove" : "study-card-action add";
+        button.dataset.index = String(index);
+        button.setAttribute("aria-label", studySuggestion.action === "remove" ? "Удалить из изучения" : "Добавить в изучение");
+
+        const symbol = document.createElement("span");
+        symbol.className = "study-card-action-symbol";
+        symbol.textContent = studySuggestion.action === "remove" ? "-" : "+";
+
+        button.appendChild(symbol);
+
+        card.appendChild(label);
+        card.appendChild(button);
+        elements.studySuggestionsList.appendChild(card);
+    });
+
+    elements.studySuggestions.hidden = studySuggestions.length === 0;
+}
+
+function dismissStudySuggestions() {
+    state.studySuggestions = [];
+    elements.studySuggestions.hidden = true;
+    elements.studySuggestionsList.innerHTML = "";
 }
 
 async function fetchGeneratedPhrase() {
@@ -98,7 +144,10 @@ async function fetchGeneratedPhrase() {
     }
 
     const data = await response.json();
-    return data.phrase || "";
+    return {
+        phrase: data.phrase || "",
+        phraseId: data.phrase_id || "",
+    };
 }
 
 async function preloadNextPhrase() {
@@ -116,7 +165,8 @@ async function displayPhrase() {
     setCharacterMood("idle");
 
     if (state.nextPhrase) {
-        elements.sourcePhrase.innerText = state.nextPhrase;
+        state.currentPhrase = state.nextPhrase;
+        elements.sourcePhrase.innerText = state.currentPhrase.phrase;
         state.nextPhrase = null;
         preloadNextPhrase();
         return;
@@ -129,8 +179,8 @@ async function generatePhrase() {
     showSpinner("phrase");
 
     try {
-        const phrase = await fetchGeneratedPhrase();
-        elements.sourcePhrase.innerText = phrase;
+        state.currentPhrase = await fetchGeneratedPhrase();
+        elements.sourcePhrase.innerText = state.currentPhrase.phrase;
         preloadNextPhrase();
     } catch (error) {
         console.error("Error while loading phrase:", error);
@@ -193,6 +243,8 @@ async function checkTranslation() {
             body: JSON.stringify({
                 source_phrase: sourcePhrase,
                 user_translation: userTranslation,
+                language: elements.language.value,
+                phrase_id: state.currentPhrase?.phraseId || "",
             }),
         });
 
@@ -205,6 +257,12 @@ async function checkTranslation() {
         elements.correctTranslation.style.visibility = "visible";
         elements.feedback.innerHTML = data.feedback || "";
         elements.feedbackContainer.hidden = false;
+
+        if (data.study_suggestions && data.study_suggestions.length > 0) {
+            showStudySuggestions(data.study_suggestions);
+        } else {
+            dismissStudySuggestions();
+        }
 
         renderSourcePhraseFeedback(data.word_feedback || []);
         updateCharacterByScore(data.score);
@@ -219,8 +277,72 @@ async function checkTranslation() {
 }
 
 async function handleControlsChange() {
+    state.currentPhrase = null;
     state.nextPhrase = null;
     await displayPhrase();
+}
+
+async function handleStudySuggestionClick(event) {
+    const button = event.target.closest("button[data-index]");
+    if (!button) {
+        return;
+    }
+
+    const index = Number(button.dataset.index);
+    const studySuggestion = state.studySuggestions[index];
+    if (!studySuggestion) {
+        return;
+    }
+
+    const action = studySuggestion.action;
+    const item = studySuggestion.item || {};
+    const payload = { action };
+
+    if (action === "add") {
+        payload.language = item.language || elements.language.value;
+        payload.item_type = item.item_type;
+        payload.source_text = item.source_text;
+        payload.explanation = item.explanation || item.source_text;
+    }
+
+    if (action === "remove") {
+        payload.item_id = item.id;
+    }
+
+    try {
+        const response = await fetch(appConfig.studyItemsUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            throw new Error("Study item request failed");
+        }
+
+        state.studySuggestions.splice(index, 1);
+
+        if (state.studySuggestions.length > 0) {
+            showStudySuggestions(state.studySuggestions);
+        } else {
+            dismissStudySuggestions();
+        }
+    } catch (error) {
+        console.error("Error while updating study items:", error);
+    } finally {
+        elements.userTranslation.focus();
+    }
+}
+
+function handleStudySuggestionMouseDown(event) {
+    const button = event.target.closest("button[data-index]");
+    if (!button) {
+        return;
+    }
+
+    event.preventDefault();
 }
 
 function handleTextareaKeydown(event) {
@@ -230,12 +352,32 @@ function handleTextareaKeydown(event) {
 
     event.preventDefault();
 
-    if (!elements.feedbackContainer.hidden || elements.userTranslation.disabled) {
+    if (!elements.feedbackContainer.hidden || !elements.studySuggestions.hidden || elements.userTranslation.disabled) {
         displayPhrase();
         return;
     }
 
     if (elements.userTranslation.value.trim() !== "") {
         checkTranslation();
+    }
+}
+
+function handleDocumentKeydown(event) {
+    if (event.key !== "Enter" || event.shiftKey) {
+        return;
+    }
+
+    if (document.activeElement === elements.userTranslation) {
+        return;
+    }
+
+    if (elements.userTranslation.disabled) {
+        event.preventDefault();
+        return;
+    }
+
+    if (!elements.feedbackContainer.hidden || !elements.studySuggestions.hidden) {
+        event.preventDefault();
+        displayPhrase();
     }
 }

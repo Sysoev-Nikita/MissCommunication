@@ -17,6 +17,7 @@ class AppConfig:
     default_level: str = "A1"
     default_language: str = "german"
     recent_generation_memory_size: int = 12
+    study_item_reuse_probability: float = 0.7
     phrase_generation_model: str = "gpt-4o-mini"
     translation_check_model: str = "gpt-4o"
     feedback_model: str = "gpt-4o"
@@ -46,6 +47,7 @@ class AppConfig:
         return {
             "generatePhraseUrl": "/generate_phrase",
             "checkTranslationUrl": "/check_translation",
+            "studyItemsUrl": "/study-items",
             "characterImages": {
                 "idle": "/static/images/neutral_positive.webp",
                 "happy": "/static/images/happy.webp",

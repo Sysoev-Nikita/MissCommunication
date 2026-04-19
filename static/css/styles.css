@@ -211,8 +211,76 @@ textarea:focus {
 
 #feedback-container {
     width: min(100%, 680px);
-    margin: 20px auto 0;
+    margin: 18px auto 0;
     padding: 0 8px;
+}
+
+#study-suggestions {
+    width: min(100%, 680px);
+    margin: 20px auto 0;
+}
+
+#study-suggestions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.study-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 10px 8px 14px;
+    border: 1px solid rgba(92, 141, 246, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 8px 24px rgba(43, 40, 55, 0.06);
+}
+
+.study-card-label {
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.study-card-action {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    font-size: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    text-align: center;
+    vertical-align: middle;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.study-card-action-symbol {
+    display: block;
+    font-size: 22px;
+    line-height: 1;
+    transform: translateY(-1px);
+    pointer-events: none;
+}
+
+.study-card-action.add {
+    background: rgba(92, 141, 246, 0.12);
+    color: var(--accent);
+}
+
+.study-card-action.remove {
+    background: rgba(208, 64, 64, 0.12);
+    color: #d64040;
+}
+
+.study-card-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(43, 40, 55, 0.08);
 }
 
 #feedback {
@@ -293,5 +361,9 @@ textarea:focus {
     #feedback-container {
         width: 100%;
         padding: 0;
+    }
+
+    #study-suggestions {
+        width: 100%;
     }
 }
