@@ -114,6 +114,7 @@ select {
 #phrase-container {
     grid-row: 1;
     min-height: 140px;
+    gap: 10px;
 }
 
 #phrase-container p#german-phrase {
@@ -130,7 +131,7 @@ select {
 #correct-translation {
     font-size: 20px;
     color: #666;
-    margin-top: 10px;
+    margin: 0;
     visibility: hidden;
 }
 
@@ -146,12 +147,19 @@ textarea {
     text-align: center;
     line-height: 1.2;
     width: calc(100% - 40px);
-    height: 100%;
+    min-height: 1.2em;
+    height: auto;
+    max-height: 100%;
     border: none;
     outline: none;
     resize: none;
     background-color: transparent;
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 textarea::placeholder {

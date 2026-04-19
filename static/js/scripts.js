@@ -2,8 +2,17 @@ let nextPhrase = null;
 
 document.addEventListener("DOMContentLoaded", async function () {
     hideSpinner();
+    const userTranslationField = document.getElementById("user-translation");
+    userTranslationField.addEventListener("input", autoResizeTextarea);
+    autoResizeTextarea();
     await displayPhrase();
 });
+
+function autoResizeTextarea() {
+    const userTranslationField = document.getElementById("user-translation");
+    userTranslationField.style.height = "auto";
+    userTranslationField.style.height = `${userTranslationField.scrollHeight}px`;
+}
 
 async function preloadNextPhrase() {
     const level = document.getElementById("level").value;
@@ -34,6 +43,7 @@ async function displayPhrase() {
     }
 
     document.getElementById("user-translation").value = "";
+    autoResizeTextarea();
     document.getElementById("feedback-container").style.display = "none";
     document.getElementById("character-image").src = "static/images/neutral_positive.webp";
 }
@@ -108,6 +118,7 @@ async function checkTranslation() {
     hideSpinner();
     document.getElementById("user-translation").disabled = false;
     document.getElementById("user-translation").focus();
+    autoResizeTextarea();
 
     document.getElementById("correct-translation").innerText = data.correct_translation;
     document.getElementById("correct-translation").style.visibility = "visible";
