@@ -1,9 +1,12 @@
 import random
-from typing import Dict, List, Optional
+import json
+from typing import Dict, List, Optional, Type
 
 import markdown
 from openai import OpenAI
+from pydantic import BaseModel
 
+from .api_logging import OpenAIApiLogger
 from .config import AppConfig
 from .history import SessionGenerationStore, SessionStudyStore
 from .models import PhraseResponse, TranslationAssessment, TranslationFeedbackResult
@@ -119,12 +122,14 @@ class LanguageTutorService:
         prompts: PromptRepository,
         generation_store: SessionGenerationStore,
         study_store: SessionStudyStore,
+        api_logger: OpenAIApiLogger,
     ) -> None:
         self.config = config
         self.client = client
         self.prompts = prompts
         self.generation_store = generation_store
         self.study_store = study_store
+        self.api_logger = api_logger
 
     @classmethod
     def from_config(cls, config: AppConfig) -> "LanguageTutorService":
@@ -133,6 +138,10 @@ class LanguageTutorService:
             memory_size=config.recent_generation_memory_size,
         )
         study_store = SessionStudyStore()
+        api_logger = OpenAIApiLogger(
+            enabled=config.openai_api_logging_enabled,
+            log_file=config.openai_api_log_file,
+        )
         client = OpenAI(api_key=config.openai_api_key)
         return cls(
             config=config,
@@ -140,6 +149,7 @@ class LanguageTutorService:
             prompts=prompts,
             generation_store=generation_store,
             study_store=study_store,
+            api_logger=api_logger,
         )
 
     def generate_phrase(self, level: str, language: str, context: str) -> Dict[str, str]:
@@ -160,17 +170,26 @@ class LanguageTutorService:
             study_focus=self._format_study_focus_block(study_item),
         )
 
-        response = self.client.beta.chat.completions.parse(
-            model=self.config.phrase_generation_model,
-            messages=[
-                {"role": "system", "content": self.prompts.load("phrase_generation_system.txt")},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=100,
-            response_format=PhraseResponse,
-        )
+        messages = [
+            {"role": "system", "content": self.prompts.load("phrase_generation_system.txt")},
+            {"role": "user", "content": prompt},
+        ]
 
-        phrase = response.choices[0].message.parsed
+        response, phrase = self._parse_structured_response(
+            stage="phrase_generation",
+            model=self.config.phrase_generation_model,
+            messages=messages,
+            response_model=PhraseResponse,
+            max_output_tokens=100,
+        )
+        self.api_logger.log_event(
+            stage="phrase_generation",
+            request_kind=self._request_kind_for_model(self.config.phrase_generation_model, structured=True),
+            model=self.config.phrase_generation_model,
+            messages=messages,
+            response=response,
+            parsed_payload=phrase.model_dump(),
+        )
         cleaned_phrase = phrase.phrase.rstrip(".")
         active_study_item = self._resolve_active_study_item(
             language=language,
@@ -210,30 +229,49 @@ class LanguageTutorService:
             user_translation=user_translation,
         )
 
-        response_check = self.client.beta.chat.completions.parse(
+        check_messages = [
+            {"role": "system", "content": self.prompts.load("translation_check_system.txt")},
+            {"role": "user", "content": prompt_check},
+        ]
+
+        response_check, assessment = self._parse_structured_response(
+            stage="translation_check",
             model=self.config.translation_check_model,
-            messages=[
-                {"role": "system", "content": self.prompts.load("translation_check_system.txt")},
-                {"role": "user", "content": prompt_check},
-            ],
-            max_tokens=1000,
-            response_format=TranslationAssessment,
+            messages=check_messages,
+            response_model=TranslationAssessment,
+            max_output_tokens=1000,
+        )
+        self.api_logger.log_event(
+            stage="translation_check",
+            request_kind=self._request_kind_for_model(self.config.translation_check_model, structured=True),
+            model=self.config.translation_check_model,
+            messages=check_messages,
+            response=response_check,
+            parsed_payload=assessment.model_dump(),
         )
 
-        assessment = response_check.choices[0].message.parsed
+        feedback_messages = [
+            {"role": "system", "content": self.prompts.load("feedback_system.txt")},
+            {"role": "user", "content": prompt_check},
+            {"role": "assistant", "content": assessment.model_dump_json()},
+            {"role": "user", "content": self.prompts.load("feedback_user.txt")},
+        ]
 
-        response_feedback = self.client.chat.completions.create(
+        response_feedback, feedback_text = self._create_text_response(
+            stage="feedback_generation",
             model=self.config.feedback_model,
-            messages=[
-                {"role": "system", "content": self.prompts.load("feedback_system.txt")},
-                {"role": "user", "content": prompt_check},
-                {"role": "assistant", "content": assessment.model_dump_json()},
-                {"role": "user", "content": self.prompts.load("feedback_user.txt")},
-            ],
-            max_tokens=1000,
+            messages=feedback_messages,
+            max_output_tokens=1000,
+        )
+        self.api_logger.log_event(
+            stage="feedback_generation",
+            request_kind=self._request_kind_for_model(self.config.feedback_model, structured=False),
+            model=self.config.feedback_model,
+            messages=feedback_messages,
+            response=response_feedback,
         )
 
-        feedback_markdown = response_feedback.choices[0].message.content or ""
+        feedback_markdown = feedback_text
         feedback_html = markdown.markdown(feedback_markdown, extensions=["tables"])
         study_suggestions = self._build_study_suggestions(
             language=language,
@@ -635,6 +673,105 @@ class LanguageTutorService:
             "label": label,
             "item": item,
         }
+
+    def _parse_structured_response(
+        self,
+        stage: str,
+        model: str,
+        messages: List[Dict[str, str]],
+        response_model: Type[BaseModel],
+        max_output_tokens: int,
+    ):
+        if self._uses_responses_api(model):
+            response = self.client.responses.create(
+                model=model,
+                input=messages,
+                text={
+                    "format": {
+                        "type": "json_schema",
+                        "name": response_model.__name__,
+                        "schema": self._build_strict_json_schema(response_model),
+                        "strict": True,
+                    }
+                },
+                max_output_tokens=max_output_tokens,
+                reasoning=self._reasoning_options_for_model(model),
+            )
+            output_text = response.output_text or ""
+            if not output_text.strip():
+                raise ValueError("Structured response parsing failed during {0}".format(stage))
+            parsed = response_model.model_validate(json.loads(output_text))
+            return response, parsed
+
+        response = self.client.beta.chat.completions.parse(
+            model=model,
+            messages=messages,
+            max_tokens=max_output_tokens,
+            response_format=response_model,
+        )
+        parsed = response.choices[0].message.parsed
+        if parsed is None:
+            raise ValueError("Structured response parsing failed during {0}".format(stage))
+        return response, parsed
+
+    def _create_text_response(
+        self,
+        stage: str,
+        model: str,
+        messages: List[Dict[str, str]],
+        max_output_tokens: int,
+    ):
+        if self._uses_responses_api(model):
+            response = self.client.responses.create(
+                model=model,
+                input=messages,
+                max_output_tokens=max_output_tokens,
+                reasoning=self._reasoning_options_for_model(model),
+            )
+            return response, response.output_text or ""
+
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_output_tokens,
+        )
+        return response, response.choices[0].message.content or ""
+
+    @staticmethod
+    def _uses_responses_api(model: str) -> bool:
+        normalized_model = model.strip().lower()
+        return normalized_model.startswith("gpt-5")
+
+    def _reasoning_options_for_model(self, model: str) -> Optional[Dict[str, str]]:
+        if not self._uses_responses_api(model):
+            return None
+        return {"effort": self.config.openai_reasoning_effort}
+
+    def _build_strict_json_schema(self, response_model: Type[BaseModel]) -> Dict[str, object]:
+        schema = response_model.model_json_schema()
+        self._apply_strict_object_schema(schema)
+        return schema
+
+    def _apply_strict_object_schema(self, node: object) -> None:
+        if isinstance(node, dict):
+            if node.get("type") == "object":
+                node.setdefault("additionalProperties", False)
+                properties = node.get("properties")
+                if isinstance(properties, dict):
+                    node["required"] = list(properties.keys())
+
+            for value in node.values():
+                self._apply_strict_object_schema(value)
+            return
+
+        if isinstance(node, list):
+            for item in node:
+                self._apply_strict_object_schema(item)
+
+    def _request_kind_for_model(self, model: str, structured: bool) -> str:
+        if self._uses_responses_api(model):
+            return "responses.create"
+        return "chat.completions.parse" if structured else "chat.completions.create"
 
     def _format_context_block(self, context: str) -> str:
         if not context:

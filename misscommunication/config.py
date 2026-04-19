@@ -18,9 +18,12 @@ class AppConfig:
     default_language: str = "german"
     recent_generation_memory_size: int = 12
     study_item_reuse_probability: float = 0.7
-    phrase_generation_model: str = "gpt-4o-mini"
-    translation_check_model: str = "gpt-4o"
-    feedback_model: str = "gpt-4o"
+    phrase_generation_model: str = "gpt-5.4-nano"
+    translation_check_model: str = "gpt-5.4-mini"
+    feedback_model: str = "gpt-5.4-nano"
+    openai_reasoning_effort: str = "low"
+    openai_api_logging_enabled: bool = True
+    openai_api_log_file: Path = Path("logs/openai_api.jsonl")
     language_options: Tuple[Dict[str, str], ...] = field(
         default_factory=lambda: (
             {"value": "german", "label": "Немецкий"},
@@ -70,4 +73,21 @@ class AppConfig:
             prompts_dir=base_dir / "prompts",
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             secret_key=os.getenv("FLASK_SECRET_KEY", os.urandom(24).hex()),
+            default_level=os.getenv("DEFAULT_LEVEL", "A1"),
+            default_language=os.getenv("DEFAULT_LANGUAGE", "german"),
+            recent_generation_memory_size=int(os.getenv("RECENT_GENERATION_MEMORY_SIZE", "12")),
+            study_item_reuse_probability=float(os.getenv("STUDY_ITEM_REUSE_PROBABILITY", "0.7")),
+            phrase_generation_model=os.getenv("PHRASE_GENERATION_MODEL", "gpt-5.4-nano"),
+            translation_check_model=os.getenv("TRANSLATION_CHECK_MODEL", "gpt-5.4-mini"),
+            feedback_model=os.getenv("FEEDBACK_MODEL", "gpt-5.4-nano"),
+            openai_reasoning_effort=os.getenv("OPENAI_REASONING_EFFORT", "low"),
+            openai_api_logging_enabled=_get_bool_env("OPENAI_API_LOGGING_ENABLED", default=True),
+            openai_api_log_file=base_dir / os.getenv("OPENAI_API_LOG_FILE", "logs/openai_api.jsonl"),
         )
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
