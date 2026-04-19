@@ -1,27 +1,19 @@
-from uuid import uuid4
-from typing import Dict, List
+from typing import List
 
 from flask import session
 
 
-class SessionHistoryStore:
-    def __init__(self, max_history_length: int, base_message: Dict[str, str]) -> None:
-        self.max_history_length = max_history_length
-        self.base_message = base_message
-        self._histories = {}  # type: Dict[str, List[Dict[str, str]]]
+class SessionGenerationStore:
+    SESSION_KEY = "recent_generation_signatures"
 
-    def get_history(self) -> List[Dict[str, str]]:
-        user_id = session.get("user_id")
-        if not user_id:
-            user_id = str(uuid4())
-            session["user_id"] = user_id
+    def __init__(self, memory_size: int) -> None:
+        self.memory_size = memory_size
 
-        if user_id not in self._histories:
-            self._histories[user_id] = [self.base_message.copy()]
+    def recent_signatures(self) -> List[str]:
+        return list(session.get(self.SESSION_KEY, []))
 
-        return self._histories[user_id]
-
-    def append(self, history: List[Dict[str, str]], role: str, content: str) -> None:
-        history.append({"role": role, "content": content})
-        while len(history) > self.max_history_length + 1:
-            history.pop(1)
+    def remember_signature(self, signature: str) -> None:
+        recent_signatures = self.recent_signatures()
+        recent_signatures.append(signature)
+        session[self.SESSION_KEY] = recent_signatures[-self.memory_size :]
+        session.modified = True

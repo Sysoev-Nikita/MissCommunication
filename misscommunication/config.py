@@ -16,7 +16,7 @@ class AppConfig:
     secret_key: str
     default_level: str = "A1"
     default_language: str = "german"
-    max_history_length: int = 100
+    recent_generation_memory_size: int = 12
     phrase_generation_model: str = "gpt-4o-mini"
     translation_check_model: str = "gpt-4o"
     feedback_model: str = "gpt-4o"
