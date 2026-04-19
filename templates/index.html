@@ -1,52 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Miss Communication</title>
-    <link rel="icon" type="image/webp" href="static/images/happy.webp">
-    <link rel="stylesheet" href="static/css/styles.css">
+    <title>{{ ui_text.page_title }}</title>
+    <link rel="icon" type="image/webp" href="{{ url_for('static', filename='images/happy.webp') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <div id="controls">
-        <select id="language">
-            <option value="german">Немецкий</option>
-            <option value="english">Английский</option>
-            <option value="french">Французский</option>
-            <option value="spanish">Испанский</option>
-            <option value="italian">Итальянский</option>
-        </select>
-        <select id="level">
-            <option value="A1">A1</option>
-            <option value="A2">A2</option>
-            <option value="B1">B1</option>
-            <option value="B2">B2</option>
-            <option value="C1">C1</option>
-            <option value="C2">C2</option>
-        </select>
-        <input type="text" id="context" placeholder="Контекст">
-    </div>
-    <div id="processing-container">
-        <div id="processing">
-            <img src="static/images/spinner.gif" alt="Loading..." style="width: 40px; height: 40px;">
-        </div>
+    <div id="app-shell">
+        <header id="controls">
+            <select id="language" aria-label="Язык">
+                {% for language in language_options %}
+                    <option value="{{ language.value }}">{{ language.label }}</option>
+                {% endfor %}
+            </select>
+
+            <select id="level" aria-label="Уровень">
+                {% for level in level_options %}
+                    <option value="{{ level }}">{{ level }}</option>
+                {% endfor %}
+            </select>
+
+            <input
+                type="text"
+                id="context"
+                placeholder="{{ ui_text.context_placeholder }}"
+                aria-label="{{ ui_text.context_placeholder }}"
+            >
+        </header>
+
+        <main id="main-container">
+            <img
+                id="character-image"
+                src="{{ url_for('static', filename='images/neutral_positive.webp') }}"
+                alt="Персонаж"
+            >
+
+            <section id="phrase-bubble" class="bubble">
+                <p id="source-phrase"></p>
+                <p id="correct-translation"></p>
+                <div class="bubble-loader" id="phrase-loader" hidden aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </section>
+
+            <section id="answer-bubble" class="bubble">
+                <textarea
+                    id="user-translation"
+                    rows="1"
+                    cols="50"
+                    placeholder="{{ ui_text.translation_placeholder }}"
+                    aria-label="{{ ui_text.translation_placeholder }}"
+                ></textarea>
+                <div class="bubble-loader" id="answer-loader" hidden aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </section>
+
+            <img
+                id="user-image"
+                src="{{ url_for('static', filename='images/user.webp') }}"
+                alt="Пользователь"
+            >
+        </main>
+
+        <section id="feedback-container" hidden>
+            <div id="feedback"></div>
+        </section>
     </div>
 
-    <div id="main-container">
-        <img id="character-image" src="static/images/neutral_positive.webp" alt="Character">
-        <div id="phrase-container">
-            <p id="german-phrase"></p>
-            <p id="correct-translation"></p>
-        </div>
-        <div id="user-translation-container">
-            <textarea id="user-translation" rows="1" cols="50" placeholder="Введите ваш перевод здесь..."></textarea>
-        </div>
-        <img id="user-image" src="static/images/user.webp" alt="User">
-    </div>
-    <div id="feedback-container" style="display: none;">
-        <div id="feedback"></div>
-    </div>
-
-    <script src="static/js/scripts.js"></script>
+    <script>
+        window.APP_CONFIG = {{ app_config|tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>

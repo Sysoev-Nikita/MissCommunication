@@ -1,183 +1,241 @@
-let nextPhrase = null;
+const appConfig = window.APP_CONFIG || {};
 
-document.addEventListener("DOMContentLoaded", async function () {
+const state = {
+    nextPhrase: null,
+};
+
+const elements = {
+    language: document.getElementById("language"),
+    level: document.getElementById("level"),
+    context: document.getElementById("context"),
+    characterImage: document.getElementById("character-image"),
+    phraseBubble: document.getElementById("phrase-bubble"),
+    answerBubble: document.getElementById("answer-bubble"),
+    sourcePhrase: document.getElementById("source-phrase"),
+    correctTranslation: document.getElementById("correct-translation"),
+    userTranslation: document.getElementById("user-translation"),
+    feedbackContainer: document.getElementById("feedback-container"),
+    feedback: document.getElementById("feedback"),
+    phraseLoader: document.getElementById("phrase-loader"),
+    answerLoader: document.getElementById("answer-loader"),
+};
+
+const characterImages = appConfig.characterImages || {};
+
+document.addEventListener("DOMContentLoaded", async () => {
     hideSpinner();
-    const userTranslationField = document.getElementById("user-translation");
-    userTranslationField.addEventListener("input", autoResizeTextarea);
+    elements.userTranslation.addEventListener("input", autoResizeTextarea);
+    elements.userTranslation.addEventListener("keydown", handleTextareaKeydown);
+
+    ["level", "language", "context"].forEach((id) => {
+        document.getElementById(id).addEventListener("change", handleControlsChange);
+    });
+
     autoResizeTextarea();
     await displayPhrase();
 });
 
 function autoResizeTextarea() {
-    const userTranslationField = document.getElementById("user-translation");
-    userTranslationField.style.height = "auto";
-    userTranslationField.style.height = `${userTranslationField.scrollHeight}px`;
+    elements.userTranslation.style.height = "auto";
+    elements.userTranslation.style.height = `${elements.userTranslation.scrollHeight}px`;
+}
+
+function showSpinner(target) {
+    hideSpinner();
+
+    if (target === "phrase") {
+        elements.phraseBubble.classList.add("is-loading");
+        elements.phraseLoader.hidden = false;
+        return;
+    }
+
+    if (target === "answer") {
+        elements.answerBubble.classList.add("is-loading");
+        elements.answerLoader.hidden = false;
+    }
+}
+
+function hideSpinner() {
+    elements.phraseBubble.classList.remove("is-loading");
+    elements.answerBubble.classList.remove("is-loading");
+    elements.phraseLoader.hidden = true;
+    elements.answerLoader.hidden = true;
+}
+
+function getPhraseRequestParams() {
+    const params = new URLSearchParams({
+        level: elements.level.value,
+        language: elements.language.value,
+        context: elements.context.value,
+    });
+
+    return params.toString();
+}
+
+function resetPhraseBubble() {
+    elements.sourcePhrase.innerHTML = "";
+    elements.correctTranslation.textContent = "";
+    elements.correctTranslation.style.visibility = "hidden";
+}
+
+function resetAnswerArea() {
+    elements.userTranslation.value = "";
+    elements.userTranslation.disabled = false;
+    elements.feedbackContainer.hidden = true;
+    elements.feedback.innerHTML = "";
+    autoResizeTextarea();
+}
+
+function setCharacterMood(mood) {
+    elements.characterImage.src = characterImages[mood] || characterImages.idle;
+}
+
+async function fetchGeneratedPhrase() {
+    const response = await fetch(`${appConfig.generatePhraseUrl}?${getPhraseRequestParams()}`);
+
+    if (!response.ok) {
+        throw new Error("Phrase generation request failed");
+    }
+
+    const data = await response.json();
+    return data.phrase || "";
 }
 
 async function preloadNextPhrase() {
-    const level = document.getElementById("level").value;
-    const language = document.getElementById("language").value;
-    const context = document.getElementById("context").value;
-
     try {
-        const response = await fetch(`/generate_phrase?level=${level}&language=${language}&context=${context}`);
-        const data = await response.json();
-        nextPhrase = data.phrase || null;
-        return nextPhrase;
+        state.nextPhrase = await fetchGeneratedPhrase();
     } catch (error) {
         console.error("Error while preloading phrase:", error);
-        nextPhrase = null;
-        return null;
+        state.nextPhrase = null;
     }
 }
 
 async function displayPhrase() {
-    resetPhraseContainer();
+    resetPhraseBubble();
+    resetAnswerArea();
+    setCharacterMood("idle");
 
-    if (nextPhrase) {
-        document.getElementById("german-phrase").innerText = nextPhrase;
-        nextPhrase = null;
+    if (state.nextPhrase) {
+        elements.sourcePhrase.innerText = state.nextPhrase;
+        state.nextPhrase = null;
         preloadNextPhrase();
-    } else {
-        await generatePhrase();
+        return;
     }
 
-    document.getElementById("user-translation").value = "";
-    autoResizeTextarea();
-    document.getElementById("feedback-container").style.display = "none";
-    document.getElementById("character-image").src = "static/images/neutral_positive.webp";
-}
-
-function resetPhraseContainer() {
-    const phraseContainer = document.getElementById("phrase-container");
-    const germanPhrase = document.getElementById("german-phrase");
-    const correctTranslation = document.getElementById("correct-translation");
-
-    germanPhrase.innerHTML = "";
-    correctTranslation.innerHTML = "";
-    correctTranslation.style.visibility = "hidden";
-
-    phraseContainer.style.display = "flex";
-    phraseContainer.style.alignItems = "center";
-    phraseContainer.style.justifyContent = "center";
-    phraseContainer.style.height = "";
-    phraseContainer.style.minHeight = "140px";
-}
-
-function showSpinner() {
-    document.getElementById("processing").style.display = "block";
-}
-
-function hideSpinner() {
-    document.getElementById("processing").style.display = "none";
+    await generatePhrase();
 }
 
 async function generatePhrase() {
-    resetPhraseContainer();
-    showSpinner();
-
-    const level = document.getElementById("level").value;
-    const language = document.getElementById("language").value;
-    const context = document.getElementById("context").value;
+    showSpinner("phrase");
 
     try {
-        const response = await fetch(`/generate_phrase?level=${level}&language=${language}&context=${context}`);
-        const data = await response.json();
-
-        document.getElementById("german-phrase").innerText = data.phrase || "";
+        const phrase = await fetchGeneratedPhrase();
+        elements.sourcePhrase.innerText = phrase;
         preloadNextPhrase();
-        return data.phrase || null;
     } catch (error) {
         console.error("Error while loading phrase:", error);
-        return null;
     } finally {
         hideSpinner();
     }
 }
 
-async function checkTranslation() {
-    const germanPhrase = document.getElementById("german-phrase").innerText;
-    const userTranslation = document.getElementById("user-translation").value;
+function renderWordFeedback(wordFeedback) {
+    const wordSpan = document.createElement("span");
+    wordSpan.innerText = `${wordFeedback.word} `;
 
-    showSpinner();
-    document.getElementById("user-translation").disabled = true;
+    if (wordFeedback.correctness === "correct") {
+        wordSpan.classList.add("correct");
+    } else if (wordFeedback.correctness === "incorrect") {
+        wordSpan.classList.add("incorrect");
+    } else if (wordFeedback.correctness === "partially_correct") {
+        wordSpan.classList.add("partially-correct");
+    }
 
-    const response = await fetch("/check_translation", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            german_phrase: germanPhrase,
-            user_translation: userTranslation
-        })
+    return wordSpan;
+}
+
+function renderSourcePhraseFeedback(wordFeedbackList) {
+    elements.sourcePhrase.innerHTML = "";
+    wordFeedbackList.forEach((wordFeedback) => {
+        elements.sourcePhrase.appendChild(renderWordFeedback(wordFeedback));
     });
+}
 
-    const data = await response.json();
-
-    hideSpinner();
-    document.getElementById("user-translation").disabled = false;
-    document.getElementById("user-translation").focus();
-    autoResizeTextarea();
-
-    document.getElementById("correct-translation").innerText = data.correct_translation;
-    document.getElementById("correct-translation").style.visibility = "visible";
-    document.getElementById("feedback").innerHTML = data.feedback;
-
-    const germanPhraseElement = document.getElementById("german-phrase");
-    germanPhraseElement.innerHTML = "";
-
-    data.word_feedback.forEach(wordFeedback => {
-        const wordSpan = document.createElement("span");
-        wordSpan.innerText = wordFeedback.word + " ";
-
-        if (wordFeedback.correctness === "correct") {
-            wordSpan.classList.add("correct");
-        } else if (wordFeedback.correctness === "incorrect") {
-            wordSpan.classList.add("incorrect");
-        } else if (wordFeedback.correctness === "partially_correct") {
-            wordSpan.classList.add("partially-correct");
-        }
-
-        germanPhraseElement.appendChild(wordSpan);
-    });
-
-    document.getElementById("feedback-container").style.display = "block";
-
-    const characterImage = document.getElementById("character-image");
-    switch (data.score) {
-        case 5:
-            characterImage.src = "static/images/happy.webp";
-            break;
-        case 4:
-            characterImage.src = "static/images/neutral_positive.webp";
-            break;
-        case 2:
-        case 3:
-            characterImage.src = "static/images/sad.webp";
-            break;
-        case 1:
-            characterImage.src = "static/images/disappointed.webp";
-            break;
+function updateCharacterByScore(score) {
+    if (score === 5) {
+        setCharacterMood("happy");
+    } else if (score === 4) {
+        setCharacterMood("neutral");
+    } else if (score === 2 || score === 3) {
+        setCharacterMood("sad");
+    } else if (score === 1) {
+        setCharacterMood("disappointed");
     }
 }
 
-document.addEventListener("keydown", function (event) {
-    if (event.key === "Enter") {
-        event.preventDefault();
-        const userTranslationField = document.getElementById("user-translation");
+async function checkTranslation() {
+    const sourcePhrase = elements.sourcePhrase.innerText.trim();
+    const userTranslation = elements.userTranslation.value.trim();
 
-        if (document.getElementById("feedback-container").style.display === "block" || userTranslationField.disabled) {
-            displayPhrase();
-        } else if (userTranslationField.value.trim() !== "") {
-            checkTranslation();
-        }
+    if (!sourcePhrase || !userTranslation) {
+        return;
     }
-});
 
-["level", "language", "context"].forEach(id => {
-    document.getElementById(id).addEventListener("change", async function () {
-        nextPhrase = null;
-        await displayPhrase();
-    });
-});
+    showSpinner("answer");
+    elements.userTranslation.disabled = true;
+
+    try {
+        const response = await fetch(appConfig.checkTranslationUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                source_phrase: sourcePhrase,
+                user_translation: userTranslation,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Translation check request failed");
+        }
+
+        const data = await response.json();
+        elements.correctTranslation.innerText = data.correct_translation || "";
+        elements.correctTranslation.style.visibility = "visible";
+        elements.feedback.innerHTML = data.feedback || "";
+        elements.feedbackContainer.hidden = false;
+
+        renderSourcePhraseFeedback(data.word_feedback || []);
+        updateCharacterByScore(data.score);
+    } catch (error) {
+        console.error("Error while checking translation:", error);
+    } finally {
+        hideSpinner();
+        elements.userTranslation.disabled = false;
+        elements.userTranslation.focus();
+        autoResizeTextarea();
+    }
+}
+
+async function handleControlsChange() {
+    state.nextPhrase = null;
+    await displayPhrase();
+}
+
+function handleTextareaKeydown(event) {
+    if (event.key !== "Enter" || event.shiftKey) {
+        return;
+    }
+
+    event.preventDefault();
+
+    if (!elements.feedbackContainer.hidden || elements.userTranslation.disabled) {
+        displayPhrase();
+        return;
+    }
+
+    if (elements.userTranslation.value.trim() !== "") {
+        checkTranslation();
+    }
+}
